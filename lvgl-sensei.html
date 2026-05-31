@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>學姊教你 LVGL × Arduino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+:root {
+  --bg:       #0d0f1a;
+  --bg2:      #131625;
+  --bg3:      #1a1e32;
+  --card:     #1e2238;
+  --border:   #2a3050;
+  --accent:   #e879a0;
+  --accent2:  #a78bfa;
+  --accent3:  #38bdf8;
+  --green:    #4ade80;
+  --orange:   #fb923c;
+  --yellow:   #fbbf24;
+  --text:     #e2e8f0;
+  --muted:    #64748b;
+  --bubble-bg:#2a1a30;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, #1a0a2e 0%, var(--bg) 70%);
+  position: relative;
+  overflow: hidden;
+  padding: 40px 20px;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle 300px at 20% 70%, rgba(232,121,160,.08), transparent),
+    radial-gradient(circle 200px at 80% 20%, rgba(56,189,248,.06), transparent);
+}
+.hero-inner {
+  max-width: 900px;
+  display: flex;
+  align-items: center;
+  gap: 50px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.avatar {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2a1030, #1a0a2e);
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 40px rgba(232,121,160,.4), 0 0 80px rgba(232,121,160,.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 90px;
+  animation: float 4s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+.avatar-badge {
+  position: absolute;
+  bottom: 8px; right: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.hero-text h1 {
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  font-weight: 900;
+  line-height: 1.2;
+  background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-text p {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 1rem;
+  max-width: 480px;
+}
+.hero-tags {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.tag {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid;
+}
+.tag-pink  { border-color: var(--accent);  color: var(--accent); }
+.tag-blue  { border-color: var(--accent3); color: var(--accent3); }
+.tag-green { border-color: var(--green);   color: var(--green); }
+.tag-orange{ border-color: var(--orange);  color: var(--orange); }
+.scroll-hint {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-size: 12px;
+  animation: bob 2s ease-in-out infinite;
+}
+@keyframes bob {
+  0%,100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(6px); }
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13,15,26,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+nav::-webkit-scrollbar { display: none; }
+.nav-logo {
+  font-weight: 900;
+  color: var(--accent);
+  white-space: nowrap;
+  padding: 14px 12px;
+  margin-right: 12px;
+  font-size: 15px;
+}
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 14px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: color .2s;
+}
+nav a:hover { color: var(--accent); }
+
+/* ── LAYOUT ── */
+.container { max-width: 1000px; margin: 0 auto; padding: 60px 24px; }
+.section-title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+.section-subtitle {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 40px;
+}
+.accent-bar {
+  display: inline-block;
+  width: 40px; height: 4px;
+  border-radius: 2px;
+  margin-bottom: 14px;
+}
+
+/* ── SPEECH BUBBLE ── */
+.bubble-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+.bubble-row.right {
+  flex-direction: row-reverse;
+}
+.bubble-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  background: linear-gradient(135deg, #2a1030, #1a0a2e);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 16px rgba(232,121,160,.3);
+}
+.bubble {
+  background: var(--bubble-bg);
+  border: 1px solid rgba(232,121,160,.25);
+  border-radius: 16px;
+  border-top-left-radius: 4px;
+  padding: 14px 18px;
+  max-width: 800px;
+  position: relative;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.bubble.right {
+  background: #0f1a2e;
+  border-color: rgba(56,189,248,.25);
+  border-radius: 16px;
+  border-top-right-radius: 4px;
+}
+.bubble strong { color: var(--accent); }
+.bubble em     { color: var(--accent3); font-style: normal; }
+.bubble .hl    { color: var(--yellow); font-weight: 700; }
+.bubble .code-inline {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(255,255,255,.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  color: var(--green);
+}
+
+/* ── CARDS ── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 32px 0; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  transition: border-color .3s, transform .2s;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-4px); }
+.card-icon  { font-size: 2rem; margin-bottom: 12px; }
+.card h3    { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+.card p     { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+
+/* ── DIAGRAM CARD ── */
+.diagram-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 24px;
+  margin: 24px 0;
+  overflow-x: auto;
+}
+.diagram-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mermaid { overflow-x: auto; }
+
+/* ── CODE BLOCK ── */
+.code-wrap {
+  position: relative;
+  margin: 20px 0;
+}
+.code-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--card);
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+}
+pre code.hljs {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  border-radius: 0 12px 12px 12px;
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+.copy-btn {
+  position: absolute;
+  top: 30px; right: 12px;
+  background: var(--card);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all .2s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── STEP ── */
+.steps { display: flex; flex-direction: column; gap: 0; }
+.step {
+  display: flex;
+  gap: 20px;
+  position: relative;
+  padding-bottom: 32px;
+}
+.step:last-child { padding-bottom: 0; }
+.step-num-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+.step-num {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1rem;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(232,121,160,.3);
+}
+.step-line {
+  flex: 1;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent), transparent);
+  margin-top: 8px;
+}
+.step-content { flex: 1; padding-top: 6px; }
+.step-content h4 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+.step-content p  { color: var(--muted); font-size: 0.9rem; margin-bottom: 12px; }
+
+/* ── COMPARISON TABLE ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 0.88rem;
+}
+th {
+  background: var(--card);
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 700;
+  border-bottom: 2px solid var(--accent);
+}
+td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+tr:hover td { background: rgba(255,255,255,.02); }
+.check { color: var(--green); }
+.cross { color: #ef4444; }
+.warn  { color: var(--yellow); }
+
+/* ── CHART ── */
+.chart-wrap {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 24px 0;
+}
+.chart-wrap h3 { font-size: 1rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; }
+canvas { max-width: 100%; }
+
+/* ── CALLOUT ── */
+.callout {
+  border-left: 4px solid;
+  padding: 14px 20px;
+  border-radius: 0 12px 12px 0;
+  margin: 20px 0;
+  font-size: 0.9rem;
+}
+.callout-warn { border-color: var(--yellow); background: rgba(251,191,36,.07); }
+.callout-info { border-color: var(--accent3); background: rgba(56,189,248,.07); }
+.callout-ok   { border-color: var(--green);   background: rgba(74,222,128,.07); }
+.callout-hot  { border-color: var(--accent);  background: rgba(232,121,160,.07); }
+.callout strong { display: block; margin-bottom: 4px; }
+
+/* ── FLOW ── */
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.flow-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 0.88rem;
+  text-align: center;
+  font-weight: 500;
+}
+.flow-box.pink   { border-color: var(--accent);  color: var(--accent); }
+.flow-box.blue   { border-color: var(--accent3); color: var(--accent3); }
+.flow-box.green  { border-color: var(--green);   color: var(--green); }
+.flow-box.orange { border-color: var(--orange);  color: var(--orange); }
+.flow-arrow { color: var(--muted); font-size: 1.2rem; }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+footer strong { color: var(--accent); }
+
+/* ── PROGRESS BAR ── */
+.mem-bar-wrap { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+.mem-row { display: flex; align-items: center; gap: 12px; font-size: 0.88rem; }
+.mem-label { width: 120px; flex-shrink: 0; color: var(--muted); }
+.mem-bar-bg {
+  flex: 1; height: 10px;
+  background: var(--bg3);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.mem-bar-fill { height: 100%; border-radius: 5px; transition: width 1s ease; }
+.mem-val { width: 60px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .hero-inner { flex-direction: column; text-align: center; }
+  .hero-tags  { justify-content: center; }
+  .bubble-row { flex-direction: column !important; }
+  .bubble { border-radius: 12px !important; }
+}
+
+/* ── SECTION DIVIDER ── */
+.sec-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+.section-header {
+  background: linear-gradient(to right, rgba(232,121,160,.08), transparent);
+  border-left: 4px solid var(--accent);
+  padding: 20px 24px;
+  margin-bottom: 40px;
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     HERO
+══════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="avatar-wrap">
+      <div class="avatar">👩‍💻</div>
+      <div class="avatar-badge">❤️ 學姊在線</div>
+    </div>
+    <div class="hero-text">
+      <h1>學姊教你<br>LVGL × Arduino</h1>
+      <p>「你連 LVGL 都不會啊？行，我教你。別讓我失望。」<br>— 某個機車但默默在乎你的大二學姊</p>
+      <div class="hero-tags">
+        <span class="tag tag-pink">LVGL v9</span>
+        <span class="tag tag-blue">Arduino / ESP32</span>
+        <span class="tag tag-green">TFT 顯示</span>
+        <span class="tag tag-orange">觸控輸入</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">▼ 往下看啊，發呆幹嘛</div>
+</section>
+
+<!-- ══════════════════════════════════════
+     NAV
+══════════════════════════════════════ -->
+<nav>
+  <div class="nav-logo">👩‍💻 LVGL × ARD</div>
+  <a href="#what">什麼是 LVGL</a>
+  <a href="#arch">架構圖</a>
+  <a href="#concepts">核心概念</a>
+  <a href="#arduino">Arduino 環境</a>
+  <a href="#driver">驅動設定</a>
+  <a href="#first">第一個 UI</a>
+  <a href="#memory">記憶體</a>
+  <a href="#tips">學姊小叮嚀</a>
+</nav>
+
+<!-- ══════════════════════════════════════
+     SECTION 1 — 什麼是 LVGL
+══════════════════════════════════════ -->
+<section id="what">
+<div class="container">
+
+  <div class="accent-bar" style="background: linear-gradient(90deg, var(--accent), var(--accent2));"></div>
+  <div class="section-title">LVGL 是什麼東西？</div>
+  <div class="section-subtitle">先搞清楚你在用啥，再說其他的。</div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      <strong>LVGL = Light and Versatile Graphics Library。</strong><br>
+      翻成人話：一個專門為<em>嵌入式系統</em>（單晶片、MCU）設計的圖形介面函式庫。<br><br>
+      你平常用的 React、Qt 那些？用不了，記憶體根本不夠。LVGL 只要
+      <span class="code-inline">64KB RAM</span> 和 <span class="code-inline">256KB Flash</span> 就能跑，
+      這才是在 Arduino / ESP32 上做漂亮 UI 的正確姿勢。<br><br>
+      <strong>完全免費、MIT 授權、C 語言寫的</strong>——連你這種 C++ 半吊子也能用。
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">🏗️</div>
+      <h3>Widget 系統</h3>
+      <p>按鈕、滑桿、圖表、選單…幾十種現成元件，不用自己手刻像素。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎨</div>
+      <h3>Style 樣式</h3>
+      <p>類似 CSS 的概念，一個 Style 可以套到多個物件，改起來不要太方便。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <h3>動畫引擎</h3>
+      <p>內建 easing 函式、動畫佇列，嵌入式裡做到 60fps 滑順動畫不是夢。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">👆</div>
+      <h3>事件驅動</h3>
+      <p>觸控、按鍵、滑鼠全部統一事件介面，callback 寫起來乾乾淨淨。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔌</div>
+      <h3>驅動無關</h3>
+      <p>只要你實作 flush callback，管你用什麼螢幕 IC，SPI、I2C 都行。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌐</div>
+      <h3>Arduino 支援</h3>
+      <p>官方有 Arduino library，ESP32 / STM32 社群支援超完整。</p>
+    </div>
+  </div>
+
+  <!-- 比較表 -->
+  <div class="diagram-card">
+    <h3>📊 跟其他方案比一比（學姊幫你整理了，感恩吧）</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>方案</th>
+          <th>RAM 需求</th>
+          <th>MCU 友善</th>
+          <th>Widget 豐富度</th>
+          <th>動畫</th>
+          <th>免費</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>LVGL</strong></td>
+          <td>64KB+</td>
+          <td class="check">✔ 專為 MCU</td>
+          <td class="check">✔ 50+ widgets</td>
+          <td class="check">✔ 內建引擎</td>
+          <td class="check">✔ MIT</td>
+        </tr>
+        <tr>
+          <td>uGFX</td>
+          <td>8KB+</td>
+          <td class="check">✔</td>
+          <td class="warn">△ 較少</td>
+          <td class="cross">✘</td>
+          <td class="cross">✘ 需授權</td>
+        </tr>
+        <tr>
+          <td>TFT_eSPI 直繪</td>
+          <td>極低</td>
+          <td class="check">✔</td>
+          <td class="cross">✘ 自己畫</td>
+          <td class="cross">✘</td>
+          <td class="check">✔</td>
+        </tr>
+        <tr>
+          <td>Qt for MCU</td>
+          <td>數 MB</td>
+          <td class="warn">△ 需高端 MCU</td>
+          <td class="check">✔ 完整 Qt</td>
+          <td class="check">✔</td>
+          <td class="cross">✘ 超貴</td>
+        </tr>
+        <tr>
+          <td>Nextion GUI</td>
+          <td>—（螢幕板載）</td>
+          <td class="check">✔</td>
+          <td class="warn">△</td>
+          <td class="warn">△</td>
+          <td class="warn">△ 限定硬體</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</section>
+
+<hr class="sec-divider">
+
+<!-- ══════════════════════════════════════
+     SECTION 2 — 架構圖
+══════════════════════════════════════ -->
+<section id="arch">
+<div class="container">
+
+  <div class="accent-bar" style="background: linear-gradient(90deg, var(--accent2), var(--accent3));"></div>
+  <div class="section-title">LVGL 架構全覽</div>
+  <div class="section-subtitle">搞懂這張圖，你就懂七成了。認真。</div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      你要知道 LVGL 分成三層：<br>
+      <span class="hl">你寫的 App（Widget 操作）</span> →
+      <span class="hl">LVGL 核心（渲染、事件）</span> →
+      <span class="hl">硬體驅動（你要自己接）</span>。<br><br>
+      最下面那層驅動，LVGL 完全不管，它只呼叫你提供的 callback，
+      所以換螢幕不用改 LVGL，只改你的驅動函式就好。聰明設計吧？
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <h3>🏛️ LVGL 軟體架構分層</h3>
+    <div class="mermaid">
+graph TB
+    subgraph APP["📱 應用層 (你的程式碼)"]
+        W1[按鈕 Button] 
+        W2[圖表 Chart]
+        W3[滑桿 Slider]
+        W4[標籤 Label]
+        W5[更多 Widgets...]
+    end
+    subgraph CORE["⚙️ LVGL 核心"]
+        OBJ[物件系統 Object System]
+        STYLE[樣式系統 Style Engine]
+        ANIM[動畫引擎 Animation]
+        EVENT[事件系統 Event]
+        RENDER[渲染管線 Render Pipeline]
+        TIMER[定時器 Timer / Task]
+    end
+    subgraph HAL["🔌 硬體抽象層 (你要實作)"]
+        DISP_DRV["顯示驅動\nlv_display_create()\nflush_cb()"]
+        INPUT_DRV["輸入驅動\nlv_indev_create()\nread_cb()"]
+        TICK["系統 Tick\nlv_tick_inc()"]
+    end
+    subgraph HW["🖥️ 實際硬體"]
+        TFT[TFT LCD / OLED]
+        TOUCH[觸控 / 按鍵]
+        MCU[ESP32 / Arduino]
+    end
+    APP --> CORE
+    CORE --> HAL
+    HAL --> HW
+    STYLE --> RENDER
+    OBJ --> RENDER
+    ANIM --> RENDER
+    EVENT --> OBJ
+    TIMER --> ANIM
+
+style APP fill:#2a1030,stroke:#e879a0,color:#e879a0
+style CORE fill:#0f1a2e,stroke:#38bdf8,color:#38bdf8
+style HAL fill:#0f2a1a,stroke:#4ade80,color:#4ade80
+style HW fill:#1a1000,stroke:#fbbf24,color:#fbbf24
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <h3>🔄 主迴圈執行流程（每一幀都在跑這個）</h3>
+    <div class="mermaid">
+sequenceDiagram
+    participant TIMER as Arduino Timer<br>(每 1ms)
+    participant LVGL as LVGL 核心
+    participant FLUSH as flush_cb<br>(你的驅動)
+    participant LCD as TFT LCD
+
+    loop 每 1ms（硬體 Timer 或 millis）
+        TIMER->>LVGL: lv_tick_inc(1)
+    end
+
+    loop loop() 主迴圈（越快越好）
+        TIMER->>LVGL: lv_timer_handler()
+        Note over LVGL: 處理動畫、事件、重繪
+        LVGL->>FLUSH: flush_cb(disp, area, px_map)
+        Note over FLUSH: 你把像素資料<br>透過 SPI 傳給螢幕
+        FLUSH->>LCD: SPI 傳輸像素
+        LCD-->>FLUSH: 完成
+        FLUSH-->>LVGL: lv_display_flush_ready()
+        Note over LVGL: 告訴 LVGL 完成了<br>可以處理下一個區塊
+    end
+    </div>
+  </div>
+
+</div>
+</section>
+
+<hr class="sec-divider">
+
+<!-- ══════════════════════════════════════
+     SECTION 3 — 核心概念
+══════════════════════════════════════ -->
+<section id="concepts">
+<div class="container">
+
+  <div class="accent-bar" style="background: linear-gradient(90deg, var(--orange), var(--yellow));"></div>
+  <div class="section-title">核心概念：物件、樣式、事件</div>
+  <div class="section-subtitle">三個東西搞懂，你就能做出 90% 的 UI。</div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      <strong>LVGL 的一切都是「物件（Object / lv_obj_t）」。</strong><br>
+      你創一個按鈕，它是物件。在按鈕上放文字，也是物件。螢幕本身？也是物件。<br><br>
+      每個物件都有<em>父子關係</em>——子物件的座標是相對於父物件的，
+      父物件移動、子物件跟著動。裁剪範圍也自動限制在父範圍內。<br><br>
+      說白了就是一棵樹，根節點是 <span class="code-inline">lv_screen_active()</span>，往下長就對了。
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <h3>🌳 物件樹（Object Tree）範例</h3>
+    <div class="mermaid">
+graph TD
+    SCREEN["🖥️ Screen（根節點）\nlv_screen_active()"]
+    CONT["📦 Container\nlv_obj_create(screen)"]
+    BTN1["🔘 Button 1\nlv_button_create(cont)"]
+    BTN2["🔘 Button 2\nlv_button_create(cont)"]
+    LBL1["📝 Label\n'確認'\nlv_label_create(btn1)"]
+    LBL2["📝 Label\n'取消'\nlv_label_create(btn2)"]
+    IMG["🖼️ Image\nlv_image_create(cont)"]
+    SLIDER["🎚️ Slider\nlv_slider_create(screen)"]
+
+    SCREEN --> CONT
+    SCREEN --> SLIDER
+    CONT --> BTN1
+    CONT --> BTN2
+    CONT --> IMG
+    BTN1 --> LBL1
+    BTN2 --> LBL2
+
+    style SCREEN fill:#2a1030,stroke:#e879a0
+    style CONT fill:#0f1a2e,stroke:#38bdf8
+    style BTN1 fill:#0f2010,stroke:#4ade80
+    style BTN2 fill:#0f2010,stroke:#4ade80
+    style SLIDER fill:#1a1000,stroke:#fbbf24
+    </div>
+  </div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      <strong>Style（樣式）</strong> 的概念你可以想成 CSS。<br>
+      背景色、邊框、圓角、內距、陰影⋯全部叫做 style property。<br><br>
+      <em>重點在 State（狀態）</em>：同一個按鈕，
+      <span class="code-inline">LV_STATE_DEFAULT</span> 是普通樣式，
+      <span class="code-inline">LV_STATE_PRESSED</span> 是按下去的樣式，
+      <span class="code-inline">LV_STATE_CHECKED</span> 是選中樣式——
+      <strong>LVGL 自動在不同狀態切換，你只要設定好就行。</strong>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">🎨</div>
+      <h3>樣式屬性（Style Properties）</h3>
+      <p>背景色、邊框、圓角、文字色、字型、Padding、陰影、透明度⋯全部可以控制。使用 <code style="color:var(--green);font-family:monospace;font-size:.82em">lv_obj_set_style_xxx()</code> 系列函式。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔀</div>
+      <h3>Part（部件）</h3>
+      <p>複雜 Widget 有多個 Part：例如 Slider 有 <code style="color:var(--green);font-family:monospace;font-size:.82em">MAIN（底軌）、INDICATOR（進度）、KNOB（旋鈕）</code>，可以分別設定樣式。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📡</div>
+      <h3>事件（Event）</h3>
+      <p>按下、放開、值變更、長按⋯用 <code style="color:var(--green);font-family:monospace;font-size:.82em">lv_obj_add_event_cb()</code> 綁定 callback，邏輯清楚不雜亂。</p>
+    </div>
+  </div>
+
+  <!-- 事件代碼示例 -->
+  <div class="code-wrap">
+    <div class="code-label">event_example.c</div>
+    <button class="copy-btn" onclick="copyCode(this)">複製</button>
+    <pre><code class="language-c">// ── 建立按鈕並綁定事件（學姊說這是基本功）──
+
+static void btn_cb(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *btn = lv_event_get_target_obj(e);
+
+    if (code == LV_EVENT_CLICKED) {
+        // 取得按鈕上的標籤
+        lv_obj_t *label = lv_obj_get_child(btn, 0);
+        
+        // 切換文字（簡單狀態機）
+        static bool on = false;
+        on = !on;
+        lv_label_set_text(label, on ? "ON ✓" : "OFF");
+        
+        // 切換背景色（直接在物件上設 inline style）
+        lv_obj_set_style_bg_color(btn,
+            on ? lv_color_hex(0x4ade80) : lv_color_hex(0x334155),
+            LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+}
+
+void my_ui(void) {
+    lv_obj_t *scr = lv_screen_active();
+
+    // 建立按鈕
+    lv_obj_t *btn = lv_button_create(scr);
+    lv_obj_set_size(btn, 120, 50);
+    lv_obj_center(btn);
+
+    // 圓角樣式
+    lv_obj_set_style_radius(btn, 25, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(btn, lv_color_hex(0x334155),
+                              LV_PART_MAIN | LV_STATE_DEFAULT);
+    // 按下去變暗
+    lv_obj_set_style_bg_color(btn, lv_color_hex(0x1e293b),
+                              LV_PART_MAIN | LV_STATE_PRESSED);
+
+    // 標籤
+    lv_obj_t *lbl = lv_label_create(btn);
+    lv_label_set_text(lbl, "OFF");
+    lv_obj_center(lbl);
+
+    // 綁事件
+    lv_obj_add_event_cb(btn, btn_cb, LV_EVENT_CLICKED, NULL);
+}</code></pre>
+  </div>
+
+</div>
+</section>
+
+<hr class="sec-divider">
+
+<!-- ══════════════════════════════════════
+     SECTION 4 — Arduino 環境
+══════════════════════════════════════ -->
+<section id="arduino">
+<div class="container">
+
+  <div class="accent-bar" style="background: linear-gradient(90deg, var(--accent3), var(--green));"></div>
+  <div class="section-title">放到 Arduino 去！</div>
+  <div class="section-subtitle">硬體選對、函式庫裝對，少走一年彎路。</div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      好，重頭戲來了。Arduino Uno、Nano 這種老東西就算了，<em>RAM 只有 2KB，跑不動 LVGL</em>。<br><br>
+      你要用的是 <strong>ESP32</strong>，便宜、Wi-Fi 內建、320KB RAM，這才是正確選擇。<br>
+      搭配 <strong>TFT_eSPI</strong> 顯示驅動，<strong>lvgl Arduino Library</strong>，基本上不踩坑。<br><br>
+      硬體建議：<span class="hl">ESP32-S3 + ILI9341 3.5"（320×240）+ XPT2046 觸控</span>，
+      這組合社群資源最多，出問題找得到解答。
+    </div>
+  </div>
+
+  <!-- 硬體比較圖 -->
+  <div class="chart-wrap">
+    <h3>📊 常見 MCU 資源比較（LVGL 可用性）</h3>
+    <canvas id="mcuChart" height="160"></canvas>
+  </div>
+
+  <!-- 推薦硬體清單 -->
+  <div class="diagram-card">
+    <h3>🛒 學姊推薦硬體清單</h3>
+    <table>
+      <thead>
+        <tr><th>角色</th><th>推薦型號</th><th>介面</th><th>備註</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>MCU</strong></td>
+          <td>ESP32-S3 DevKit</td>
+          <td>—</td>
+          <td class="check">✔ 最推，PSRAM 8MB 可外掛</td>
+        </tr>
+        <tr>
+          <td><strong>MCU（省錢版）</strong></td>
+          <td>ESP32 WROOM</td>
+          <td>—</td>
+          <td class="warn">△ RAM 320KB，夠用但別太貪心</td>
+        </tr>
+        <tr>
+          <td><strong>顯示器</strong></td>
+          <td>ILI9341 2.8"/3.5"</td>
+          <td>SPI</td>
+          <td class="check">✔ 驅動成熟、TFT_eSPI 完整支援</td>
+        </tr>
+        <tr>
+          <td><strong>顯示器（大）</strong></td>
+          <td>ST7789 240×320</td>
+          <td>SPI</td>
+          <td class="check">✔ 速度快、色彩鮮艷</td>
+        </tr>
+        <tr>
+          <td><strong>觸控</strong></td>
+          <td>XPT2046</td>
+          <td>SPI</td>
+          <td class="check">✔ 電阻式，便宜好用</td>
+        </tr>
+        <tr>
+          <td><strong>觸控（進階）</strong></td>
+          <td>FT6236 / GT911</td>
+          <td>I2C</td>
+          <td class="check">✔ 電容式，滑順度好</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 函式庫安裝步驟 -->
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      <strong>函式庫安裝三步驟，不要搞錯順序：</strong>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num-wrap">
+        <div class="step-num">1</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-content">
+        <h4>安裝 TFT_eSPI（顯示驅動）</h4>
+        <p>Arduino IDE → 函式庫管理 → 搜尋 <strong>TFT_eSPI</strong> by Bodmer → 安裝</p>
+        <div class="callout callout-warn">
+          <strong>⚠️ 重要</strong>
+          安裝後要去 <code style="font-family:monospace;color:var(--yellow)">Arduino/libraries/TFT_eSPI/User_Setup.h</code>
+          設定你的螢幕 IC 型號、SPI 腳位！預設值幾乎都是錯的。
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num-wrap">
+        <div class="step-num">2</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-content">
+        <h4>安裝 LVGL</h4>
+        <p>函式庫管理 → 搜尋 <strong>lvgl</strong> → 安裝（目前推薦 v9.x）</p>
+        <div class="callout callout-info">
+          <strong>ℹ️ 必做步驟</strong>
+          安裝後複製一份設定檔：把 <code style="font-family:monospace;color:var(--accent3)">libraries/lvgl/lv_conf_template.h</code>
+          複製到 <code style="font-family:monospace;color:var(--accent3)">libraries/lv_conf.h</code>（注意位置），
+          然後把第一行 <code style="font-family:monospace;color:var(--accent3)">#if 0</code> 改成 <code style="font-family:monospace;color:var(--accent3)">#if 1</code>。
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num-wrap">
+        <div class="step-num">3</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-content">
+        <h4>確認 lv_conf.h 關鍵設定</h4>
+        <p>這幾個設定不對，輕則跑不動，重則當機：</p>
+        <div class="code-wrap">
+          <div class="code-label">lv_conf.h（關鍵設定）</div>
+          <button class="copy-btn" onclick="copyCode(this)">複製</button>
+          <pre><code class="language-c">/* ─── 解析度：改成你螢幕的實際像素 ─── */
+#define LV_HOR_RES_MAX  320
+#define LV_VER_RES_MAX  240
+
+/* ─── 顏色深度：TFT 通常是 16-bit RGB565 ─── */
+#define LV_COLOR_DEPTH  16
+
+/* ─── Tick 來源（選 1，後面教你怎麼設）─── */
+#define LV_TICK_CUSTOM  1
+#define LV_TICK_CUSTOM_INCLUDE  "Arduino.h"
+#define LV_TICK_CUSTOM_SYS_TIME_EXPR  (millis())
+
+/* ─── 記憶體池大小（看你 MCU 有多少 RAM）─── */
+#define LV_MEM_SIZE  (48 * 1024U)   /* ESP32: 可以給 48KB */
+
+/* ─── 字型（預設只有 Montserrat，需要中文另外處理）─── */
+#define LV_FONT_MONTSERRAT_14  1
+#define LV_FONT_MONTSERRAT_20  1</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<hr class="sec-divider">
+
+<!-- ══════════════════════════════════════
+     SECTION 5 — 驅動設定
+══════════════════════════════════════ -->
+<section id="driver">
+<div class="container">
+
+  <div class="accent-bar" style="background: linear-gradient(90deg, var(--green), var(--accent3));"></div>
+  <div class="section-title">最重要的事：接好驅動</div>
+  <div class="section-subtitle">LVGL 不管你用什麼螢幕，它只要你提供這兩個 callback，你接好了它才動得起來。</div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      LVGL 的設計哲學是：<em>「我只負責算出要畫什麼像素，傳出去是你家的事」</em>。<br><br>
+      所以你要提供：<br>
+      <strong>① flush_cb</strong>：LVGL 算好了一塊畫面，你把它塞進 SPI 傳給螢幕。<br>
+      <strong>② touchpad_read_cb</strong>：LVGL 問你「現在有沒有人按著？座標哪裡？」你回答它。<br><br>
+      就這樣。兩個函式搞定所有硬體橋接，多優雅。
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <h3>📡 驅動資料流</h3>
+    <div class="mermaid">
+graph LR
+    LVGL["LVGL 渲染引擎\n計算出 dirty region 像素"]
+    FBUF["Frame Buffer\n(SRAM 中的暫存區)"]
+    FLUSH["你的 flush_cb()\n把 buffer 傳給螢幕"]
+    SPI["SPI 匯流排"]
+    LCD["ILI9341 / ST7789\nLCD 控制器"]
+    SCREEN["TFT 玻璃面板\n你看到的畫面"]
+
+    LVGL -->|"寫入像素資料"| FBUF
+    FBUF -->|"flush_cb(area, px_map)"| FLUSH
+    FLUSH -->|"pushColors() / writePixels()"| SPI
+    SPI --> LCD
+    LCD --> SCREEN
+    FLUSH -->|"lv_display_flush_ready()\n告訴 LVGL 傳完了"| LVGL
+
+    style LVGL fill:#2a1030,stroke:#e879a0,color:#e2e8f0
+    style FBUF fill:#0f1a2e,stroke:#38bdf8,color:#e2e8f0
+    style FLUSH fill:#0f2010,stroke:#4ade80,color:#e2e8f0
+    style LCD fill:#1a1000,stroke:#fbbf24,color:#e2e8f0
+    </div>
+  </div>
+
+  <!-- 完整 Arduino .ino 示範 -->
+  <div class="code-wrap">
+    <div class="code-label">lvgl_arduino_template.ino — 完整模板（學姊親手寫的，珍惜）</div>
+    <button class="copy-btn" onclick="copyCode(this)">複製</button>
+    <pre><code class="language-cpp">/**
+ * LVGL + Arduino / ESP32 標準模板
+ * 硬體：ESP32 + ILI9341 (320×240) + XPT2046 觸控
+ * 函式庫：TFT_eSPI + lvgl 9.x
+ */
+
+#include &lt;lvgl.h&gt;
+#include &lt;TFT_eSPI.h&gt;
+
+// ────────────────────────────────────
+//  硬體物件
+// ────────────────────────────────────
+TFT_eSPI tft = TFT_eSPI();
+
+// ── 觸控 SPI 腳位（XPT2046）──
+#define TOUCH_CS   33
+#define TOUCH_IRQ  36
+
+// ────────────────────────────────────
+//  LVGL 顯示 Buffer（建議雙 buffer）
+//  大小 = 解析度 × 1/10 × 2 bytes(RGB565)
+// ────────────────────────────────────
+#define SCREEN_W  320
+#define SCREEN_H  240
+#define BUF_LINES 30   // 緩衝行數，越大越快但佔 RAM
+
+static lv_color_t disp_buf1[SCREEN_W * BUF_LINES];
+static lv_color_t disp_buf2[SCREEN_W * BUF_LINES];  // 雙 buffer 效率更好
+
+// ────────────────────────────────────
+//  ① flush_cb：LVGL 叫你把像素傳出去
+// ────────────────────────────────────
+static void my_flush_cb(lv_display_t *disp,
+                         const lv_area_t *area,
+                         uint8_t *px_map)
+{
+    uint32_t w = area->x2 - area->x1 + 1;
+    uint32_t h = area->y2 - area->y1 + 1;
+
+    tft.startWrite();
+    tft.setAddrWindow(area->x1, area->y1, w, h);
+    // px_map 是 RGB565 16-bit 資料
+    tft.pushColors((uint16_t *)px_map, w * h, true);
+    tft.endWrite();
+
+    // ★ 這行不能漏！告訴 LVGL 已經傳完，可以繼續
+    lv_display_flush_ready(disp);
+}
+
+// ────────────────────────────────────
+//  ② touch_read_cb：LVGL 問你觸控狀態
+// ────────────────────────────────────
+static void my_touch_read_cb(lv_indev_t *indev,
+                              lv_indev_data_t *data)
+{
+    // 讀取 XPT2046
+    // 實際上你要用對應的 XPT2046 library
+    uint16_t tx, ty;
+    bool pressed = tft.getTouch(&tx, &ty, 600);
+
+    if (pressed) {
+        data->point.x = tx;
+        data->point.y = ty;
+        data->state = LV_INDEV_STATE_PRESSED;
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;
+    }
+}
+
+// ────────────────────────────────────
+//  setup()
+// ────────────────────────────────────
+void setup() {
+    Serial.begin(115200);
+
+    // ─ 初始化螢幕 ─
+    tft.begin();
+    tft.setRotation(1);  // 橫屏
+    tft.fillScreen(TFT_BLACK);
+
+    // ─ 初始化 LVGL ─
+    lv_init();
+
+    // ─ 建立 display 物件 ─
+    lv_display_t *disp = lv_display_create(SCREEN_W, SCREEN_H);
+    lv_display_set_flush_cb(disp, my_flush_cb);
+
+    // 設定雙 buffer（partial rendering 模式）
+    lv_display_set_buffers(disp,
+        disp_buf1, disp_buf2,
+        sizeof(disp_buf1),
+        LV_DISPLAY_RENDER_MODE_PARTIAL);
+
+    // ─ 建立輸入裝置（觸控）─
+    lv_indev_t *indev = lv_indev_create();
+    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(indev, my_touch_read_cb);
+
+    // ─ 建立你的 UI ─
+    my_ui_init();
+
+    Serial.println("LVGL 啟動完成！學姊表示滿意。");
+}
+
+// ────────────────────────────────────
+//  loop()：越快執行越好，不要加 delay()
+// ────────────────────────────────────
+void loop() {
+    // ★ 核心：讓 LVGL 的定時器/動畫/渲染跑起來
+    //   lv_tick_inc 由 lv_conf.h 中設定為 millis() 自動提供
+    uint32_t sleep_ms = lv_timer_handler();
+    delay(sleep_ms);  // 用 LVGL 回傳值決定 delay 時間，最省電
+}
+
+// ────────────────────────────────────
+//  建立 UI
+// ────────────────────────────────────
+void my_ui_init() {
+    lv_obj_t *scr = lv_screen_active();
+
+    // 設定背景色
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x0d0f1a),
+                               LV_PART_MAIN);
+
+    // 建立標籤
+    lv_obj_t *label = lv_label_create(scr);
+    lv_label_set_text(label, "Hello from 學姊!");
+    lv_obj_set_style_text_color(label, lv_color_hex(0xe879a0),
+                                 LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_20,
+                                LV_PART_MAIN);
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, -30);
+
+    // 建立按鈕
+    lv_obj_t *btn = lv_button_create(scr);
+    lv_obj_set_size(btn, 140, 45);
+    lv_obj_align(btn, LV_ALIGN_CENTER, 0, 30);
+    lv_obj_set_style_bg_color(btn, lv_color_hex(0xe879a0),
+                               LV_PART_MAIN);
+    lv_obj_set_style_radius(btn, 22, LV_PART_MAIN);
+    lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+        LV_UNUSED(e);
+        Serial.println("按鈕被按了！你真的很愛亂按...");
+    }, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *btn_lbl = lv_label_create(btn);
+    lv_label_set_text(btn_lbl, "點我啊 笨蛋");
+    lv_obj_center(btn_lbl);
+}</code></pre>
+  </div>
+
+</div>
+</section>
+
+<hr class="sec-divider">
+
+<!-- ══════════════════════════════════════
+     SECTION 6 — 第一個真實 UI
+══════════════════════════════════════ -->
+<section id="first">
+<div class="container">
+
+  <div class="accent-bar" style="background: linear-gradient(90deg, var(--accent), var(--orange));"></div>
+  <div class="section-title">做一個真實的控制面板</div>
+  <div class="section-subtitle">學姊帶你從 Hello World 升級到實際可用的 UI。</div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      好，基礎的按鈕你會了，來做個<em>真正有用的東西</em>：一個 IoT 感測器面板。<br><br>
+      顯示溫度、濕度，有個 LED 控制開關，還有一個數值調整用的 Slider。<br>
+      這種 UI 在智慧家庭、工業控制台超常見，你學起來以後用途超廣。
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <h3>🗺️ UI 版面設計（Flexbox Layout）</h3>
+    <div class="mermaid">
+graph TD
+    subgraph SCR["螢幕 320×240"]
+        TITLE["標題列 Label: IoT Dashboard"]
+        subgraph ROW1["Row 1 (Flex Row)"]
+            TEMP["溫度卡片\narc meter\n+ 數值"]
+            HUM["濕度卡片\narc meter\n+ 數值"]
+        end
+        subgraph ROW2["Row 2 (Flex Row)"]
+            SW["LED 開關\nSwitch"]
+            SLI["亮度 Slider\n0–100%"]
+        end
+    end
+
+    SCR --> TITLE
+    SCR --> ROW1
+    SCR --> ROW2
+
+style SCR fill:#0d0f1a,stroke:#e879a0
+style TITLE fill:#2a1030,stroke:#e879a0,color:#e2e8f0
+style ROW1 fill:#0f1a2e,stroke:#38bdf8,color:#e2e8f0
+style ROW2 fill:#0f2010,stroke:#4ade80,color:#e2e8f0
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label">iot_dashboard.c — 完整面板範例</div>
+    <button class="copy-btn" onclick="copyCode(this)">複製</button>
+    <pre><code class="language-c">/**
+ * IoT 感測器面板  (學姊的代表作，版權所有)
+ * 架構: 標題 + 2張感測器卡 + 控制列
+ */
+
+static lv_obj_t *g_temp_arc, *g_hum_arc;
+static lv_obj_t *g_temp_lbl, *g_hum_lbl;
+static lv_obj_t *g_bright_lbl;
+
+// ── 卡片建立 helper ──
+static lv_obj_t *create_sensor_card(lv_obj_t *parent,
+                                     const char *title,
+                                     uint32_t arc_color)
+{
+    lv_obj_t *card = lv_obj_create(parent);
+    lv_obj_set_size(card, 130, 150);
+    lv_obj_set_style_bg_color(card, lv_color_hex(0x1e2238),
+                               LV_PART_MAIN);
+    lv_obj_set_style_border_color(card, lv_color_hex(arc_color),
+                                   LV_PART_MAIN);
+    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
+    lv_obj_set_style_radius(card, 12, LV_PART_MAIN);
+    lv_obj_set_flex_flow(card, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(card, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(card, 4, LV_PART_MAIN);
+
+    // 標題
+    lv_obj_t *t = lv_label_create(card);
+    lv_label_set_text(t, title);
+    lv_obj_set_style_text_color(t, lv_color_hex(arc_color),
+                                 LV_PART_MAIN);
+
+    // Arc 圓形儀表
+    lv_obj_t *arc = lv_arc_create(card);
+    lv_obj_set_size(arc, 90, 90);
+    lv_arc_set_rotation(arc, 135);
+    lv_arc_set_bg_angles(arc, 0, 270);
+    lv_arc_set_range(arc, 0, 100);
+    lv_arc_set_value(arc, 0);
+    lv_obj_remove_style(arc, NULL, LV_PART_KNOB);
+    lv_obj_clear_flag(arc, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_arc_color(arc, lv_color_hex(arc_color),
+                                LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(arc, 10, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(arc, lv_color_hex(0x131625),
+                                LV_PART_MAIN);
+    lv_obj_set_style_arc_width(arc, 10, LV_PART_MAIN);
+
+    // 數值標籤（放在 arc 中央）
+    lv_obj_t *val = lv_label_create(arc);
+    lv_label_set_text(val, "--");
+    lv_obj_set_style_text_color(val, lv_color_hex(0xe2e8f0),
+                                 LV_PART_MAIN);
+    lv_obj_set_style_text_font(val, &lv_font_montserrat_14,
+                                LV_PART_MAIN);
+    lv_obj_center(val);
+
+    return arc;  // 回傳 arc 以便外部更新值
+}
+
+// ── Slider 事件 ──
+static void slider_cb(lv_event_t *e) {
+    lv_obj_t *slider = lv_event_get_target_obj(e);
+    int32_t val = lv_slider_get_value(slider);
+    lv_label_set_text_fmt(g_bright_lbl, "亮度: %d%%", (int)val);
+    // 這裡可以呼叫 analogWrite() 控制 LED PWM
+    // analogWrite(LED_PIN, map(val, 0, 100, 0, 255));
+}
+
+// ── 主 UI 建立函式 ──
+void iot_dashboard_create(void) {
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x0d0f1a),
+                               LV_PART_MAIN);
+
+    // ─ 標題 ─
+    lv_obj_t *title = lv_label_create(scr);
+    lv_label_set_text(title, "IoT Dashboard");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xe879a0),
+                                 LV_PART_MAIN);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_14,
+                                LV_PART_MAIN);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 8);
+
+    // ─ 感測器行（Flex）─
+    lv_obj_t *row1 = lv_obj_create(scr);
+    lv_obj_set_size(row1, 320, 165);
+    lv_obj_align(row1, LV_ALIGN_TOP_MID, 0, 32);
+    lv_obj_set_style_bg_opa(row1, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(row1, 0, LV_PART_MAIN);
+    lv_obj_set_flex_flow(row1, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row1, LV_FLEX_ALIGN_SPACE_EVENLY,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    g_temp_arc = create_sensor_card(row1, "TEMP °C", 0xff6b6b);
+    g_hum_arc  = create_sensor_card(row1, "HUMIDITY", 0x38bdf8);
+
+    // 取得各卡片的數值 label（第一個子物件是 arc 中的標籤）
+    g_temp_lbl = lv_obj_get_child(g_temp_arc, 0);
+    g_hum_lbl  = lv_obj_get_child(g_hum_arc, 0);
+
+    // ─ 控制列 ─
+    lv_obj_t *row2 = lv_obj_create(scr);
+    lv_obj_set_size(row2, 300, 55);
+    lv_obj_align(row2, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_set_style_bg_color(row2, lv_color_hex(0x1e2238),
+                               LV_PART_MAIN);
+    lv_obj_set_style_radius(row2, 12, LV_PART_MAIN);
+    lv_obj_set_flex_flow(row2, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row2, LV_FLEX_ALIGN_SPACE_EVENLY,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    // LED 開關
+    lv_obj_t *sw_lbl = lv_label_create(row2);
+    lv_label_set_text(sw_lbl, "LED");
+    lv_obj_set_style_text_color(sw_lbl, lv_color_hex(0x64748b),
+                                 LV_PART_MAIN);
+
+    lv_obj_t *sw = lv_switch_create(row2);
+    lv_obj_set_style_bg_color(sw, lv_color_hex(0x4ade80),
+                               LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_add_event_cb(sw, [](lv_event_t *e) {
+        lv_obj_t *s = lv_event_get_target_obj(e);
+        bool on = lv_obj_has_state(s, LV_STATE_CHECKED);
+        // digitalWrite(LED_PIN, on);
+        Serial.printf("LED: %s\n", on ? "ON" : "OFF");
+    }, LV_EVENT_VALUE_CHANGED, NULL);
+
+    // 亮度標籤
+    g_bright_lbl = lv_label_create(row2);
+    lv_label_set_text(g_bright_lbl, "亮度: 50%");
+    lv_obj_set_style_text_color(g_bright_lbl, lv_color_hex(0xfbbf24),
+                                 LV_PART_MAIN);
+    lv_obj_set_style_text_font(g_bright_lbl, &lv_font_montserrat_12,
+                                LV_PART_MAIN);
+
+    // Slider
+    lv_obj_t *slider = lv_slider_create(row2);
+    lv_obj_set_width(slider, 100);
+    lv_slider_set_range(slider, 0, 100);
+    lv_slider_set_value(slider, 50, LV_ANIM_OFF);
+    lv_obj_set_style_bg_color(slider, lv_color_hex(0xfbbf24),
+                               LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(slider, lv_color_hex(0xfbbf24),
+                               LV_PART_KNOB);
+    lv_obj_add_event_cb(slider, slider_cb, LV_EVENT_VALUE_CHANGED, NULL);
+}
+
+// ── 資料更新函式（從 loop() 定期呼叫）──
+void dashboard_update(float temp, float humidity) {
+    // 更新溫度 Arc（假設範圍 0–50°C 對應 0–100%）
+    int32_t temp_pct = (int32_t)(temp * 2.0f);
+    lv_arc_set_value(g_temp_arc, LV_MIN(100, temp_pct));
+    lv_label_set_text_fmt(g_temp_lbl, "%.1f°", (double)temp);
+
+    // 更新濕度 Arc
+    lv_arc_set_value(g_hum_arc, (int32_t)humidity);
+    lv_label_set_text_fmt(g_hum_lbl, "%.0f%%", (double)humidity);
+}</code></pre>
+  </div>
+
+</div>
+</section>
+
+<hr class="sec-divider">
+
+<!-- ══════════════════════════════════════
+     SECTION 7 — 記憶體管理
+══════════════════════════════════════ -->
+<section id="memory">
+<div class="container">
+
+  <div class="accent-bar" style="background: linear-gradient(90deg, var(--yellow), var(--orange));"></div>
+  <div class="section-title">記憶體：最容易翻車的地方</div>
+  <div class="section-subtitle">ESP32 只有 320KB RAM，用一點少一點，不能亂浪費。</div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      <strong>這裡是 99% 的人卡關的地方。</strong> 認真聽。<br><br>
+      LVGL 需要：<em>Frame Buffer（畫面快取）</em> + <em>lv_mem（LVGL 自用 heap）</em>。<br>
+      Frame Buffer 越大，畫面更新越快（可以一次傳更多行），但也吃更多 RAM。<br><br>
+      <span class="hl">黃金比例：Frame Buffer = 螢幕寬 × 行數 × 2（RGB565）</span>，
+      行數建議 1/10 解析度，大概 20~40 行，超過就是在浪費 RAM 了。
+    </div>
+  </div>
+
+  <!-- 記憶體分配圖 -->
+  <div class="chart-wrap">
+    <h3>📦 ESP32 320KB RAM 典型分配（LVGL 專案）</h3>
+    <canvas id="ramChart" height="180"></canvas>
+  </div>
+
+  <!-- 進度條視覺化 -->
+  <div class="diagram-card">
+    <h3>📊 不同設定下的記憶體佔用估算</h3>
+    <div class="mem-bar-wrap">
+      <div class="mem-row">
+        <div class="mem-label">Frame Buffer × 1</div>
+        <div class="mem-bar-bg">
+          <div class="mem-bar-fill" id="mb1" style="width:0%;background:linear-gradient(90deg,#38bdf8,#818cf8)"></div>
+        </div>
+        <div class="mem-val">~19 KB</div>
+      </div>
+      <div class="mem-row">
+        <div class="mem-label">Frame Buffer × 2</div>
+        <div class="mem-bar-bg">
+          <div class="mem-bar-fill" id="mb2" style="width:0%;background:linear-gradient(90deg,#4ade80,#38bdf8)"></div>
+        </div>
+        <div class="mem-val">~38 KB</div>
+      </div>
+      <div class="mem-row">
+        <div class="mem-label">lv_mem Pool</div>
+        <div class="mem-bar-bg">
+          <div class="mem-bar-fill" id="mb3" style="width:0%;background:linear-gradient(90deg,#e879a0,#a78bfa)"></div>
+        </div>
+        <div class="mem-val">~48 KB</div>
+      </div>
+      <div class="mem-row">
+        <div class="mem-label">App Stack + Heap</div>
+        <div class="mem-bar-bg">
+          <div class="mem-bar-fill" id="mb4" style="width:0%;background:linear-gradient(90deg,#fbbf24,#fb923c)"></div>
+        </div>
+        <div class="mem-val">~80 KB</div>
+      </div>
+      <div class="mem-row">
+        <div class="mem-label">Wi-Fi Stack</div>
+        <div class="mem-bar-bg">
+          <div class="mem-bar-fill" id="mb5" style="width:0%;background:linear-gradient(90deg,#fb923c,#ef4444)"></div>
+        </div>
+        <div class="mem-val">~80 KB</div>
+      </div>
+      <div class="mem-row" style="font-weight:700">
+        <div class="mem-label" style="color:var(--accent)">剩餘可用</div>
+        <div class="mem-bar-bg">
+          <div class="mem-bar-fill" id="mb6" style="width:0%;background:linear-gradient(90deg,#374151,#1f2937)"></div>
+        </div>
+        <div class="mem-val" style="color:var(--accent)">~55 KB</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-warn">
+    <strong>⚠️ 注意：全螢幕 Buffer 是天坑！</strong>
+    320×240×2 bytes = <strong>153,600 bytes = 150 KB</strong>。ESP32 根本放不下。
+    請務必使用 Partial Rendering（部分渲染），只備份幾行的 buffer。
+  </div>
+
+  <div class="callout callout-ok">
+    <strong>✅ ESP32-S3 + PSRAM 是最佳解</strong>
+    如果你的板子有 PSRAM（外部 SPI RAM），可以把 Frame Buffer 放到 PSRAM 去，
+    這樣就能用大 buffer 甚至全螢幕 buffer，效能大提升。
+    <code style="font-family:monospace;font-size:.85em;color:var(--green)">heap_caps_malloc(size, MALLOC_CAP_SPIRAM)</code>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label">psram_buffer.cpp — 使用 PSRAM 開大 buffer</div>
+    <button class="copy-btn" onclick="copyCode(this)">複製</button>
+    <pre><code class="language-cpp">// 確認開啟 PSRAM：platformio.ini 加上
+// board_build.arduino.partitions = default_8MB.csv
+// 或在 Arduino IDE 選 PSRAM: "Enabled"
+
+#include "esp_heap_caps.h"
+
+// 在 PSRAM 分配全螢幕 buffer（需要 ~150KB PSRAM）
+static lv_color_t *disp_buf1 = nullptr;
+static lv_color_t *disp_buf2 = nullptr;
+
+void init_display_buffers() {
+    size_t buf_size = SCREEN_W * SCREEN_H * sizeof(lv_color_t);
+
+    // 嘗試從 PSRAM 分配
+    disp_buf1 = (lv_color_t *)heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
+    disp_buf2 = (lv_color_t *)heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
+
+    if (!disp_buf1 || !disp_buf2) {
+        Serial.println("PSRAM 不夠，改用 SRAM partial buffer");
+        // Fallback 到小 buffer
+        static lv_color_t fb1[SCREEN_W * 30];
+        static lv_color_t fb2[SCREEN_W * 30];
+        disp_buf1 = fb1;
+        disp_buf2 = fb2;
+        buf_size = sizeof(fb1);
+    }
+
+    lv_display_t *disp = lv_display_create(SCREEN_W, SCREEN_H);
+    lv_display_set_flush_cb(disp, my_flush_cb);
+    lv_display_set_buffers(disp, disp_buf1, disp_buf2,
+                           buf_size, LV_DISPLAY_RENDER_MODE_FULL);
+
+    Serial.printf("Buffer 分配成功，每個大小: %d bytes\n", buf_size);
+    Serial.printf("可用 PSRAM: %d bytes\n", esp_get_free_heap_size());
+}</code></pre>
+  </div>
+
+</div>
+</section>
+
+<hr class="sec-divider">
+
+<!-- ══════════════════════════════════════
+     SECTION 8 — 學姊小叮嚀
+══════════════════════════════════════ -->
+<section id="tips">
+<div class="container">
+
+  <div class="accent-bar" style="background: linear-gradient(90deg, var(--accent2), var(--accent));"></div>
+  <div class="section-title">學姊的 10 條金科玉律</div>
+  <div class="section-subtitle">違反這些規則，你的程式就給我當機。</div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      我教你這麼多，最後給你條戒律，記好了。<br>
+      違反這些，別說我教過你啊。
+    </div>
+  </div>
+
+  <div class="diagram-card" style="padding: 24px;">
+    <h3>📜 十戒（學姊親訂，如有違者後果自負）</h3>
+
+    <div style="display:flex;flex-direction:column;gap:16px;margin-top:16px;">
+
+      <div class="callout callout-hot">
+        <strong>① 絕對不要在 loop() 裡加 delay()</strong>
+        delay() 會卡住 lv_timer_handler()，動畫變卡頓、觸控失靈。要等待就用 lv_timer 或 millis() 非阻塞寫法。
+      </div>
+
+      <div class="callout callout-warn">
+        <strong>② lv_display_flush_ready() 不能漏</strong>
+        flush_cb 結尾沒有呼叫這個，畫面只更新一次然後永遠卡死。我說的。
+      </div>
+
+      <div class="callout callout-info">
+        <strong>③ LVGL 不是 thread-safe</strong>
+        如果你用 FreeRTOS（ESP32 預設就有），所有 LVGL 操作必須在同一個 task 裡，
+        或者用 mutex 鎖起來。跨 task 改 UI = 隨機當機。
+      </div>
+
+      <div class="callout callout-hot">
+        <strong>④ 不要在 event callback 裡直接刪除物件</strong>
+        在 callback 裡呼叫 lv_obj_delete() 刪掉自己，LVGL 會瞬間爆炸。
+        要刪請用 lv_obj_delete_async()。
+      </div>
+
+      <div class="callout callout-warn">
+        <strong>⑤ lv_conf.h 設定錯解析度 = 顯示花掉</strong>
+        LV_HOR_RES 跟 LV_VER_RES 必須跟你的螢幕物理像素完全一致，不是「差不多」就好。
+      </div>
+
+      <div class="callout callout-ok">
+        <strong>⑥ 用 lv_obj_align() 而不是 lv_obj_set_pos()</strong>
+        set_pos 是絕對座標，換螢幕分辨率全部爆掉。align 是相對對齊，才是正確姿勢。
+      </div>
+
+      <div class="callout callout-info">
+        <strong>⑦ 字型問題：中文需要額外處理</strong>
+        LVGL 內建字型沒有中文。要顯示中文，需要用 LVGL Font Converter 把 TTF 轉成 C 陣列，
+        或者用 LittleFS 載入。不要以為裝完就有了。
+      </div>
+
+      <div class="callout callout-hot">
+        <strong>⑧ SPI 速度太慢 = 畫面撕裂</strong>
+        TFT_eSPI 的 SPI_FREQUENCY 建議 40MHz 以上。太慢的話每次更新畫面都看得到掃描線。
+        ESP32 SPI 最高支援 80MHz。
+      </div>
+
+      <div class="callout callout-warn">
+        <strong>⑨ 記得設 LV_COLOR_DEPTH = 16</strong>
+        TFT 螢幕幾乎都是 RGB565（16-bit），如果設成 32 bit，顏色會整個跑掉而且多吃一倍記憶體。
+      </div>
+
+      <div class="callout callout-ok">
+        <strong>⑩ 用官方模擬器先測試</strong>
+        LVGL 有提供 PC 模擬器（就是你那個 lv_port_pc_vscode！）。
+        在電腦上測邏輯、測動畫，確定沒問題再燒到 MCU，省你九成 debug 時間。
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 學習路徑 -->
+  <div class="bubble-row" style="margin-top:40px;">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      最後，<strong>你的學習路徑應該長這樣：</strong>
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <h3>🗺️ 建議學習路徑</h3>
+    <div class="mermaid">
+graph LR
+    A["① PC 模擬器\n先在電腦跑 LVGL\n不踩硬體坑"] -->
+    B["② 熟悉 Widget\n按鈕、標籤、滑桿\n弧形儀表、圖表"] -->
+    C["③ 樣式深入\nStyle / State / Part\n做出漂亮 UI"] -->
+    D["④ 事件系統\nCallback 設計\n邏輯與 UI 分離"] -->
+    E["⑤ 接上硬體\nflush_cb / touch_cb\nESP32 + TFT_eSPI"] -->
+    F["⑥ 記憶體優化\nBuffer 調整\nPSRAM / DMA"] -->
+    G["⑦ 進階功能\n動畫引擎\n字型 / 圖片 / 主題"]
+
+style A fill:#2a1030,stroke:#e879a0,color:#e2e8f0
+style B fill:#0f1a2e,stroke:#38bdf8,color:#e2e8f0
+style C fill:#0f2010,stroke:#4ade80,color:#e2e8f0
+style D fill:#1a1000,stroke:#fbbf24,color:#e2e8f0
+style E fill:#2a1030,stroke:#e879a0,color:#e2e8f0
+style F fill:#0f1a2e,stroke:#a78bfa,color:#e2e8f0
+style G fill:#0f2010,stroke:#fb923c,color:#e2e8f0
+    </div>
+  </div>
+
+  <!-- 最後的學姊話 -->
+  <div class="bubble-row" style="margin-top:32px;">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      好了，我教了你這麼多，你要是還搞不懂⋯<br>
+      <strong>那就再來問我啊，笨蛋。</strong><br><br>
+      <em>（但下次帶飲料來，謝謝。）</em>
+    </div>
+  </div>
+
+  <!-- 資源連結 -->
+  <div class="cards" style="margin-top: 32px;">
+    <div class="card">
+      <div class="card-icon">📚</div>
+      <h3>官方文件</h3>
+      <p>docs.lvgl.io — 所有 Widget 的 API 文件，找不到方法就去那查。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎮</div>
+      <h3>Online Simulator</h3>
+      <p>lvgl.io/simulator — 瀏覽器直接跑 LVGL，連開發板都不需要，超方便。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">💬</div>
+      <h3>Forum</h3>
+      <p>forum.lvgl.io — 遇到奇怪問題先去搜，99% 都有人問過了。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">⭐</div>
+      <h3>GitHub</h3>
+      <p>github.com/lvgl/lvgl — 有 examples 資料夾，各種 Widget 範例程式碼都在裡面。</p>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<!-- ══════════════════════════════════════
+     FOOTER
+══════════════════════════════════════ -->
+<footer>
+  <p>用 <strong>LVGL v9</strong> + <strong>Arduino / ESP32</strong> 打造你的嵌入式 UI</p>
+  <p style="margin-top:8px;font-size:.8rem;">由某個機車但默默在乎你的 <strong>學姊</strong> 傾心製作 ❤️</p>
+</footer>
+
+<!-- ══════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════ -->
+<script>
+// ── Mermaid 初始化 ──
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#1e2238',
+    primaryTextColor: '#e2e8f0',
+    primaryBorderColor: '#e879a0',
+    lineColor: '#64748b',
+    secondaryColor: '#131625',
+    tertiaryColor: '#0d0f1a',
+    background: '#0d0f1a',
+    nodeBorder: '#2a3050',
+    clusterBkg: '#131625',
+    titleColor: '#e879a0',
+    edgeLabelBackground: '#1e2238',
+    fontFamily: 'Noto Sans TC, sans-serif',
+  },
+  flowchart: { htmlLabels: true, curve: 'basis' },
+  sequence: {
+    showSequenceNumbers: false,
+    actorFontFamily: 'Noto Sans TC',
+    messageFontFamily: 'Noto Sans TC',
+    boxTextMargin: 4,
+    messageMargin: 20,
+    mirrorActors: false,
+  }
+});
+
+// ── highlight.js ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('pre code').forEach(el => {
+    hljs.highlightElement(el);
+  });
+});
+
+// ── Copy Button ──
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre code');
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = '✓ 已複製';
+    setTimeout(() => btn.textContent = '複製', 2000);
+  });
+}
+
+// ── MCU 比較圖 ──
+document.addEventListener('DOMContentLoaded', () => {
+  const mcuCtx = document.getElementById('mcuChart');
+  if (!mcuCtx) return;
+  new Chart(mcuCtx, {
+    type: 'bar',
+    data: {
+      labels: ['Arduino Uno\n(ATmega328)', 'Arduino Nano\n33 BLE', 'ESP8266', 'ESP32\nWROOM', 'ESP32-S3\n+PSRAM', 'STM32F4'],
+      datasets: [
+        {
+          label: 'RAM (KB)',
+          data: [2, 256, 80, 320, 8320, 192],
+          backgroundColor: 'rgba(56,189,248,0.7)',
+          borderColor: '#38bdf8',
+          borderWidth: 1,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Flash (KB)',
+          data: [32, 1000, 4096, 4096, 8192, 1024],
+          backgroundColor: 'rgba(232,121,160,0.5)',
+          borderColor: '#e879a0',
+          borderWidth: 1,
+          yAxisID: 'y',
+        },
+        {
+          label: 'LVGL 適用度 (0-10)',
+          data: [0, 5, 3, 7, 10, 8],
+          backgroundColor: 'rgba(74,222,128,0.7)',
+          borderColor: '#4ade80',
+          borderWidth: 1,
+          type: 'line',
+          yAxisID: 'y2',
+          tension: 0.4,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: { color: '#94a3b8', font: { family: 'Noto Sans TC' } }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label.includes('適用度'))
+                return ` 適用度: ${ctx.raw}/10`;
+              return ` ${ctx.dataset.label}: ${ctx.raw} ${ctx.dataset.label.includes('RAM') ? 'KB' : 'KB'}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#64748b', font: { family: 'Noto Sans TC', size: 11 } },
+          grid: { color: 'rgba(255,255,255,.05)' }
+        },
+        y: {
+          type: 'logarithmic',
+          position: 'left',
+          ticks: {
+            color: '#64748b',
+            callback: v => v >= 1000 ? (v/1024).toFixed(0)+'MB' : v+'KB'
+          },
+          grid: { color: 'rgba(255,255,255,.05)' },
+          title: { display: true, text: 'RAM / Flash (log scale)', color: '#64748b' }
+        },
+        y2: {
+          position: 'right',
+          min: 0, max: 10,
+          ticks: { color: '#4ade80', font: { size: 11 } },
+          grid: { display: false },
+          title: { display: true, text: 'LVGL 適用度', color: '#4ade80' }
+        }
+      },
+      backgroundColor: '#0d0f1a',
+    }
+  });
+
+  // ── RAM 圓餅圖 ──
+  const ramCtx = document.getElementById('ramChart');
+  if (ramCtx) {
+    new Chart(ramCtx, {
+      type: 'doughnut',
+      data: {
+        labels: [
+          'Frame Buffer ×2 (~38KB)',
+          'lv_mem Pool (~48KB)',
+          'App Stack & Heap (~80KB)',
+          'Wi-Fi Stack (~80KB)',
+          '剩餘可用 (~55KB)'
+        ],
+        datasets: [{
+          data: [38, 48, 80, 80, 55],
+          backgroundColor: [
+            'rgba(56,189,248,0.8)',
+            'rgba(232,121,160,0.8)',
+            'rgba(251,191,36,0.8)',
+            'rgba(251,146,60,0.8)',
+            'rgba(55,65,81,0.8)',
+          ],
+          borderColor: '#0d0f1a',
+          borderWidth: 3,
+          hoverOffset: 8,
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '60%',
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#94a3b8',
+              font: { family: 'Noto Sans TC', size: 12 },
+              padding: 12,
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${ctx.raw}KB (${Math.round(ctx.raw/320*100)}%)`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ── 記憶體進度條動畫 ──
+  const bars = [
+    { id: 'mb1', pct: 6  },
+    { id: 'mb2', pct: 12 },
+    { id: 'mb3', pct: 15 },
+    { id: 'mb4', pct: 25 },
+    { id: 'mb5', pct: 25 },
+    { id: 'mb6', pct: 17 },
+  ];
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        bars.forEach((b, i) => {
+          setTimeout(() => {
+            const el = document.getElementById(b.id);
+            if (el) el.style.width = b.pct + '%';
+          }, i * 120);
+        });
+        observer.disconnect();
+      }
+    });
+  }, { threshold: 0.3 });
+
+  const memSection = document.querySelector('.mem-bar-wrap');
+  if (memSection) observer.observe(memSection);
+});
+</script>
+</body>
+</html>
