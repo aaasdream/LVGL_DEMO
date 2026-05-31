@@ -516,6 +516,7 @@ footer strong { color: var(--accent); }
   <a href="#driver">驅動設定</a>
   <a href="#first">第一個 UI</a>
   <a href="#memory">記憶體</a>
+  <a href="#image">圖片旋轉</a>
   <a href="#tips">學姊小叮嚀</a>
 </nav>
 
@@ -1587,6 +1588,238 @@ void init_display_buffers() {
 <hr class="sec-divider">
 
 <!-- ══════════════════════════════════════
+     SECTION IMAGE — 圖片旋轉縮放
+══════════════════════════════════════ -->
+<section id="image">
+<div class="container">
+
+  <div class="accent-bar" style="background: linear-gradient(90deg, #a78bfa, #38bdf8);"></div>
+  <div class="section-title">圖片旋轉、縮放、翻轉</div>
+  <div class="section-subtitle">可以！而且不只旋轉，縮放、翻轉、透明度、動畫全部都有。</div>
+
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      <strong>可以，而且超好用。</strong> LVGL 的 <span class="code-inline">lv_image</span> Widget 內建這些操作：<br><br>
+      <em>旋轉</em>用 <span class="code-inline">lv_image_set_rotation()</span>，單位是 <strong>0.1 度</strong>（所以 450 = 45.0°），
+      360° = 3600。<br>
+      <em>縮放</em>用 <span class="code-inline">lv_image_set_scale()</span>，256 = 原始大小，512 = 放大兩倍，128 = 縮小一半。<br>
+      <em>翻轉</em>用 <span class="code-inline">lv_image_set_sym()</span>。<br><br>
+      最爽的是，這些屬性可以直接丟進 <span class="code-inline">lv_anim</span>，一行動畫旋轉根本不費力。
+    </div>
+  </div>
+
+  <!-- 互動示範 -->
+  <div class="diagram-card" style="text-align:center;">
+    <h3>🎮 即時示範（拖拉滑桿看效果）</h3>
+    <div style="display:flex;gap:32px;flex-wrap:wrap;justify-content:center;align-items:flex-start;margin-top:16px;">
+
+      <!-- Canvas 預覽 -->
+      <div style="position:relative;">
+        <canvas id="imgDemo" width="240" height="240"
+          style="background:#060610;border-radius:12px;border:1px solid #2a3050;"></canvas>
+      </div>
+
+      <!-- 控制面板 -->
+      <div style="display:flex;flex-direction:column;gap:18px;min-width:260px;text-align:left;padding-top:8px;">
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:.85rem;color:var(--muted);">旋轉角度</span>
+            <span id="rotVal" style="font-family:monospace;color:var(--accent);font-size:.85rem;">0°</span>
+          </div>
+          <input type="range" id="rotSlider" min="0" max="3600" value="0" step="10"
+            style="width:100%;accent-color:var(--accent);">
+          <code style="font-size:.75rem;color:var(--green);font-family:monospace;">lv_image_set_rotation(img, <span id="rotCode">0</span>);</code>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:.85rem;color:var(--muted);">縮放比例</span>
+            <span id="scaleVal" style="font-family:monospace;color:var(--accent2);font-size:.85rem;">100%</span>
+          </div>
+          <input type="range" id="scaleSlider" min="64" max="512" value="256" step="8"
+            style="width:100%;accent-color:var(--accent2);">
+          <code style="font-size:.75rem;color:var(--green);font-family:monospace;">lv_image_set_scale(img, <span id="scaleCode">256</span>);</code>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:.85rem;color:var(--muted);">透明度</span>
+            <span id="opaVal" style="font-family:monospace;color:var(--accent3);font-size:.85rem;">255</span>
+          </div>
+          <input type="range" id="opaSlider" min="0" max="255" value="255" step="1"
+            style="width:100%;accent-color:var(--accent3);">
+          <code style="font-size:.75rem;color:var(--green);font-family:monospace;">lv_obj_set_style_opa(img, <span id="opaCode">255</span>, 0);</code>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button onclick="flipH()" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">⟺ 水平翻轉</button>
+          <button onclick="flipV()" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">⟷ 垂直翻轉</button>
+          <button onclick="resetAll()" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--orange);color:var(--orange);border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;">↺ 重置</button>
+        </div>
+
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;">
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;">Pivot（旋轉中心）</div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="setPivot('center')" id="pvC" style="flex:1;padding:5px;background:#1e3a2a;border:1px solid var(--green);color:var(--green);border-radius:6px;cursor:pointer;font-size:.75rem;font-family:inherit;">中心</button>
+            <button onclick="setPivot('top-left')" id="pvTL" style="flex:1;padding:5px;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:.75rem;font-family:inherit;">左上角</button>
+            <button onclick="setPivot('bottom-right')" id="pvBR" style="flex:1;padding:5px;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:.75rem;font-family:inherit;">右下角</button>
+          </div>
+          <code id="pivotCode" style="font-size:.75rem;color:var(--green);font-family:monospace;display:block;margin-top:6px;">lv_image_set_pivot(img, w/2, h/2); // 中心</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API 速查表 -->
+  <div class="diagram-card">
+    <h3>📋 圖片操作 API 速查</h3>
+    <table>
+      <thead><tr><th>API</th><th>說明</th><th>數值範例</th></tr></thead>
+      <tbody>
+        <tr><td><code style="color:var(--green);font-family:monospace;font-size:.85em">lv_image_set_rotation(img, angle)</code></td><td>旋轉角度（0.1° 為單位）</td><td><code style="color:var(--yellow);font-family:monospace;font-size:.85em">900</code> = 90°，<code style="color:var(--yellow);font-family:monospace;font-size:.85em">1800</code> = 180°</td></tr>
+        <tr><td><code style="color:var(--green);font-family:monospace;font-size:.85em">lv_image_set_scale(img, zoom)</code></td><td>等比例縮放</td><td><code style="color:var(--yellow);font-family:monospace;font-size:.85em">256</code> = 1x，<code style="color:var(--yellow);font-family:monospace;font-size:.85em">512</code> = 2x，<code style="color:var(--yellow);font-family:monospace;font-size:.85em">128</code> = 0.5x</td></tr>
+        <tr><td><code style="color:var(--green);font-family:monospace;font-size:.85em">lv_image_set_scale_x(img, zoom)</code></td><td>僅水平縮放</td><td>設 128 = 壓扁一半</td></tr>
+        <tr><td><code style="color:var(--green);font-family:monospace;font-size:.85em">lv_image_set_scale_y(img, zoom)</code></td><td>僅垂直縮放</td><td>設 512 = 縱向拉長兩倍</td></tr>
+        <tr><td><code style="color:var(--green);font-family:monospace;font-size:.85em">lv_image_set_pivot(img, x, y)</code></td><td>設旋轉中心點（相對圖片左上角）</td><td><code style="color:var(--yellow);font-family:monospace;font-size:.85em">w/2, h/2</code> = 圖片中心</td></tr>
+        <tr><td><code style="color:var(--green);font-family:monospace;font-size:.85em">lv_image_set_sym(img, en)</code></td><td>水平翻轉（鏡像）</td><td><code style="color:var(--yellow);font-family:monospace;font-size:.85em">true</code> / <code style="color:var(--yellow);font-family:monospace;font-size:.85em">false</code></td></tr>
+        <tr><td><code style="color:var(--green);font-family:monospace;font-size:.85em">lv_obj_set_style_opa(img, opa, 0)</code></td><td>透明度</td><td><code style="color:var(--yellow);font-family:monospace;font-size:.85em">0</code>=全透明，<code style="color:var(--yellow);font-family:monospace;font-size:.85em">255</code>=不透明</td></tr>
+        <tr><td><code style="color:var(--green);font-family:monospace;font-size:.85em">lv_image_set_inner_align(img, align)</code></td><td>圖片在 Widget 內的對齊</td><td><code style="color:var(--yellow);font-family:monospace;font-size:.85em">LV_IMAGE_ALIGN_STRETCH</code> 等</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 程式碼範例 -->
+  <div class="bubble-row">
+    <div class="bubble-avatar">👩‍💻</div>
+    <div class="bubble">
+      動畫旋轉跟動畫縮放是最常用的效果，搭配 <span class="code-inline">lv_anim</span> 幾行就做到了。
+      看好，我只寫一次。
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label">image_rotation.c — 旋轉 + 縮放 + 動畫完整範例</div>
+    <button class="copy-btn" onclick="copyCode(this)">複製</button>
+    <pre><code class="language-c">/**
+ * LVGL 圖片旋轉／縮放完整範例
+ * 包含：靜態旋轉、動態縮放動畫、持續旋轉動畫
+ */
+
+// ── 靜態旋轉（設定後不動）──────────────────────────
+void image_static_example(void) {
+    lv_obj_t *img = lv_image_create(lv_screen_active());
+    lv_image_set_src(img, &my_icon);          // 你的圖片來源
+
+    // 設旋轉中心 = 圖片中心（預設就是中心，可以不寫）
+    lv_image_set_pivot(img, my_icon.header.w / 2,
+                            my_icon.header.h / 2);
+
+    // 旋轉 45°（= 450，單位 0.1 度）
+    lv_image_set_rotation(img, 450);
+
+    // 縮放到 1.5 倍（= 256 * 1.5 = 384）
+    lv_image_set_scale(img, 384);
+
+    // 水平鏡像翻轉
+    lv_image_set_sym(img, true);
+
+    lv_obj_center(img);
+}
+
+// ── 旋轉動畫：anim exec callback ────────────────────
+static void rot_anim_cb(void *obj, int32_t v) {
+    lv_image_set_rotation((lv_obj_t *)obj, (int32_t)v);
+}
+
+// ── 縮放動畫：anim exec callback ────────────────────
+static void scale_anim_cb(void *obj, int32_t v) {
+    lv_image_set_scale((lv_obj_t *)obj, (int32_t)v);
+}
+
+// ── 透明度動畫（呼吸效果）───────────────────────────
+static void opa_anim_cb(void *obj, int32_t v) {
+    lv_obj_set_style_opa((lv_obj_t *)obj, (lv_opa_t)v, 0);
+}
+
+void image_animated_example(void) {
+    lv_obj_t *img = lv_image_create(lv_screen_active());
+    lv_image_set_src(img, &my_icon);
+    lv_image_set_pivot(img, my_icon.header.w / 2,
+                            my_icon.header.h / 2);
+    lv_obj_center(img);
+
+    // ① 持續旋轉（0° → 360°，無限循環，2 秒一圈）
+    lv_anim_t rot;
+    lv_anim_init(&rot);
+    lv_anim_set_var(&rot, img);
+    lv_anim_set_exec_cb(&rot, rot_anim_cb);
+    lv_anim_set_values(&rot, 0, 3600);          // 0 ~ 360°
+    lv_anim_set_duration(&rot, 2000);           // 2 秒
+    lv_anim_set_repeat_count(&rot, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&rot, lv_anim_path_linear);  // 勻速
+    lv_anim_start(&rot);
+
+    // ② 縮放呼吸（0.8x ↔ 1.2x，來回，1.5 秒）
+    lv_anim_t scl;
+    lv_anim_init(&scl);
+    lv_anim_set_var(&scl, img);
+    lv_anim_set_exec_cb(&scl, scale_anim_cb);
+    lv_anim_set_values(&scl, 200, 310);         // 0.78x ~ 1.21x
+    lv_anim_set_duration(&scl, 1500);
+    lv_anim_set_playback_duration(&scl, 1500);  // 來回
+    lv_anim_set_repeat_count(&scl, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&scl, lv_anim_path_ease_in_out);
+    lv_anim_start(&scl);
+
+    // ③ 淡入淡出呼吸（透明度 80 ↔ 255）
+    lv_anim_t opa;
+    lv_anim_init(&opa);
+    lv_anim_set_var(&opa, img);
+    lv_anim_set_exec_cb(&opa, opa_anim_cb);
+    lv_anim_set_values(&opa, 80, 255);
+    lv_anim_set_duration(&opa, 1200);
+    lv_anim_set_playback_duration(&opa, 1200);
+    lv_anim_set_repeat_count(&opa, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&opa, lv_anim_path_ease_in_out);
+    lv_anim_set_delay(&opa, 400);               // 錯開相位，更自然
+    lv_anim_start(&opa);
+}
+
+// ── 圖片格式來源支援 ────────────────────────────────
+// LVGL 支援三種圖片來源：
+//
+// 1. C 陣列（最常用，用 LVGL Image Converter 把 PNG 轉成 .c）
+//    LV_IMG_DECLARE(my_icon);
+//    lv_image_set_src(img, &my_icon);
+//
+// 2. 檔案系統（需要啟用 LV_USE_FS_*）
+//    lv_image_set_src(img, "S:/icons/logo.png");
+//
+// 3. 純色 / Symbol 字型
+//    lv_image_set_src(img, LV_SYMBOL_OK);  // 符號圖</code></pre>
+  </div>
+
+  <div class="callout callout-info">
+    <strong>ℹ️ 圖片轉換工具</strong>
+    PNG / JPG → LVGL C 陣列：<strong>官方線上工具</strong> lvgl.io/tools/imageconverter<br>
+    選擇格式 <code style="font-family:monospace;color:var(--accent3)">RGB565</code>（TFT 螢幕）或 <code style="font-family:monospace;color:var(--accent3)">ARGB8888</code>（帶透明度），
+    輸出的 .c 檔直接加進 Arduino 專案就能用。
+  </div>
+
+  <div class="callout callout-warn">
+    <strong>⚠️ 旋轉會吃 CPU！</strong>
+    LVGL 旋轉是軟體運算（bilinear interpolation），每次畫面更新都要重新計算像素。
+    圖片越大越慢。建議圖片不要超過 <strong>100×100 像素</strong>，或者換用帶硬體加速的 MCU（例如 ESP32-S3 有 PPA）。
+  </div>
+
+</div>
+</section>
+
+<hr class="sec-divider">
+
+<!-- ══════════════════════════════════════
      SECTION 8 — 學姊小叮嚀
 ══════════════════════════════════════ -->
 <section id="tips">
@@ -1781,6 +2014,184 @@ document.addEventListener('DOMContentLoaded', () => {
     hljs.highlightElement(el);
   });
 });
+
+// ══════════════════════════════════════
+//  圖片旋轉互動示範
+// ══════════════════════════════════════
+(function() {
+  let rotation  = 0;   // degrees (真實角度)
+  let scale     = 1.0;
+  let opacity   = 1.0;
+  let fH        = false;
+  let fV        = false;
+  let pivotMode = 'center'; // 'center' | 'top-left' | 'bottom-right'
+  let autoRot   = null;
+
+  const canvas  = document.getElementById('imgDemo');
+  if (!canvas) return;
+  const ctx     = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // 畫「假 LVGL 圖示」
+  function drawIcon(ctx, size) {
+    const s = size;
+    ctx.clearRect(0, 0, s, s);
+    // 外圓
+    ctx.beginPath();
+    ctx.arc(s/2, s/2, s/2 - 4, 0, Math.PI*2);
+    ctx.fillStyle = '#1e2238';
+    ctx.fill();
+    ctx.strokeStyle = '#e879a0';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // L
+    ctx.fillStyle = '#e879a0';
+    ctx.font = `bold ${s*0.42}px JetBrains Mono, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('LV', s/2, s/2 - 4);
+    ctx.font = `${s*0.18}px Noto Sans TC, sans-serif`;
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('GL', s/2, s/2 + s*0.24);
+  }
+
+  const offscreen = document.createElement('canvas');
+  offscreen.width = offscreen.height = 90;
+  drawIcon(offscreen.getContext('2d'), 90);
+
+  function getPivot() {
+    const iw = 90 * scale, ih = 90 * scale;
+    if (pivotMode === 'center')       return { x: iw/2, y: ih/2 };
+    if (pivotMode === 'top-left')     return { x: 0,    y: 0 };
+    if (pivotMode === 'bottom-right') return { x: iw,   y: ih };
+    return { x: iw/2, y: ih/2 };
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+
+    // 格線
+    ctx.strokeStyle = 'rgba(30,50,90,0.6)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    const iw = 90 * scale, ih = 90 * scale;
+    const pivot = getPivot();
+    const cx = W/2, cy = H/2;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation * Math.PI / 180);
+    ctx.scale(fH ? -1 : 1, fV ? -1 : 1);
+    ctx.drawImage(offscreen, -pivot.x, -pivot.y, iw, ih);
+
+    // 畫 pivot 點
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, 5, 0, Math.PI*2);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fill();
+    // 軸線
+    ctx.strokeStyle = 'rgba(251,191,36,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(-W, 0); ctx.lineTo(W, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -H); ctx.lineTo(0, H); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.restore();
+
+    // 角度文字
+    ctx.fillStyle = 'rgba(100,116,139,0.8)';
+    ctx.font = '11px JetBrains Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`rot=${Math.round(rotation*10)/10}° scale=${Math.round(scale*100)}% opa=${Math.round(opacity*255)}`, 8, H-8);
+  }
+
+  function update() {
+    render();
+    document.getElementById('rotVal').textContent  = Math.round(rotation) + '°';
+    document.getElementById('scaleVal').textContent= Math.round(scale*100) + '%';
+    document.getElementById('opaVal').textContent  = Math.round(opacity*255);
+    document.getElementById('rotCode').textContent  = Math.round(rotation * 10);
+    document.getElementById('scaleCode').textContent= Math.round(scale * 256);
+    document.getElementById('opaCode').textContent  = Math.round(opacity * 255);
+  }
+
+  // 滑桿事件
+  document.getElementById('rotSlider').addEventListener('input', e => {
+    rotation = +e.target.value / 10;
+    update();
+  });
+  document.getElementById('scaleSlider').addEventListener('input', e => {
+    scale = +e.target.value / 256;
+    update();
+  });
+  document.getElementById('opaSlider').addEventListener('input', e => {
+    opacity = +e.target.value / 255;
+    update();
+  });
+
+  // 按鈕
+  window.flipH = () => { fH = !fH; update(); };
+  window.flipV = () => { fV = !fV; update(); };
+  window.resetAll = () => {
+    rotation = 0; scale = 1; opacity = 1; fH = false; fV = false;
+    document.getElementById('rotSlider').value   = '0';
+    document.getElementById('scaleSlider').value = '256';
+    document.getElementById('opaSlider').value   = '255';
+    update();
+  };
+  window.setPivot = (mode) => {
+    pivotMode = mode;
+    ['pvC','pvTL','pvBR'].forEach(id => {
+      const b = document.getElementById(id);
+      b.style.background = 'var(--card)';
+      b.style.borderColor = 'var(--border)';
+      b.style.color = 'var(--muted)';
+    });
+    const activeId = mode === 'center' ? 'pvC' : mode === 'top-left' ? 'pvTL' : 'pvBR';
+    const ab = document.getElementById(activeId);
+    ab.style.background = '#1e3a2a'; ab.style.borderColor = 'var(--green)'; ab.style.color = 'var(--green)';
+    const pivotTexts = {
+      'center':       'lv_image_set_pivot(img, w/2, h/2); // 中心',
+      'top-left':     'lv_image_set_pivot(img, 0, 0);     // 左上角',
+      'bottom-right': 'lv_image_set_pivot(img, w, h);     // 右下角',
+    };
+    document.getElementById('pivotCode').textContent = pivotTexts[mode];
+    update();
+  };
+
+  // Canvas 拖曳旋轉
+  let dragging = false, lastX = 0;
+  canvas.addEventListener('mousedown', e => { dragging = true; lastX = e.clientX; });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    rotation = (rotation + (e.clientX - lastX)) % 360;
+    if (rotation < 0) rotation += 360;
+    lastX = e.clientX;
+    document.getElementById('rotSlider').value = Math.round(rotation * 10);
+    update();
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+  canvas.addEventListener('touchstart', e => { dragging = true; lastX = e.touches[0].clientX; e.preventDefault(); }, {passive:false});
+  canvas.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    rotation = (rotation + (e.touches[0].clientX - lastX)) % 360;
+    if (rotation < 0) rotation += 360;
+    lastX = e.touches[0].clientX;
+    document.getElementById('rotSlider').value = Math.round(rotation * 10);
+    update(); e.preventDefault();
+  }, {passive:false});
+  canvas.addEventListener('touchend', () => { dragging = false; });
+
+  // 初始渲染
+  update();
+  // 提示文字
+  canvas.title = '左右拖曳可旋轉圖示';
+})();
 
 // ── Copy Button ──
 function copyCode(btn) {
